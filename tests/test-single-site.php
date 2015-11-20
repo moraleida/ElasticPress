@@ -6,6 +6,15 @@ class EPTestSingleSite extends EP_Test_Base {
 	 * @var boolean 
 	 */
 	var $is_404=false;
+
+	/**
+	 * The file system path to the plugin.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @var string
+	 */
+	protected $plugin_path;
 	
 	/**
 	 * Setup each test.
@@ -18,6 +27,8 @@ class EPTestSingleSite extends EP_Test_Base {
 		$wpdb->suppress_errors();
 
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+
+		$this->plugin_path = dirname( dirname( __FILE__ ) );
 
 		wp_set_current_user( $admin_id );
 
@@ -847,75 +858,6 @@ class EPTestSingleSite extends EP_Test_Base {
 
 		$this->assertEquals( 3, $query->post_count );
 		$this->assertEquals( 3, $query->found_posts );
-	}
-
-	/**
-	 * Test meta mapping for complex arrays. All complex arrays are serialized
-	 *
-	 * @since 1.7
-	 */
-	public function testSearchMetaMappingComplexArray() {
-		ep_create_and_sync_post( array( 'post_content' => 'post content' ), array( 'test_key' => array( 'test' ) ) );
-
-		ep_refresh_index();
-		$args = array(
-			'ep_integrate' => true,
-		);
-
-		$query = new WP_Query( $args );
-
-		$this->assertEquals( 1, $query->post_count );
-
-		$this->assertEquals( 1, count( $query->posts[0]->post_meta['test_key'] ) ); // Make sure there is only one value
-
-		$this->assertTrue( is_array( unserialize( $query->posts[0]->post_meta['test_key'][0] ) ) ); // Make sure value is properly serialized
-	}
-
-	/**
-	 * Test meta mapping for complex objects. All complex objects are serialized
-	 *
-	 * @since 1.7
-	 */
-	public function testSearchMetaMappingComplexObject() {
-		$object = new stdClass();
-		$object->test = 'hello';
-
-		ep_create_and_sync_post( array( 'post_content' => 'post content' ), array( 'test_key' => $object ) );
-
-		ep_refresh_index();
-		$args = array(
-			'ep_integrate' => true,
-		);
-
-		$query = new WP_Query( $args );
-
-		$this->assertEquals( 1, $query->post_count );
-
-		$this->assertEquals( 1, count( $query->posts[0]->post_meta['test_key'] ) ); // Make sure there is only one value
-
-		$this->assertEquals( 'hello', unserialize( $query->posts[0]->post_meta['test_key'][0] )->test ); // Make sure value is properly serialized
-	}
-
-	/**
-	 * Test meta mapping for simple string
-	 *
-	 * @since 1.7
-	 */
-	public function testSearchMetaMappingString() {
-		ep_create_and_sync_post( array( 'post_content' => 'post content' ), array( 'test_key' => 'test' ) );
-
-		ep_refresh_index();
-		$args = array(
-			'ep_integrate' => true,
-		);
-
-		$query = new WP_Query( $args );
-
-		$this->assertEquals( 1, $query->post_count );
-
-		$this->assertEquals( 1, count( $query->posts[0]->post_meta['test_key'] ) ); // Make sure there is only one value
-
-		$this->assertEquals( 'test', $query->posts[0]->post_meta['test_key'][0] );
 	}
 
 	/**
@@ -1974,23 +1916,82 @@ class EPTestSingleSite extends EP_Test_Base {
 	}
 
 	/**
-	 * Helper method for mocking indexable post statuses
-	 * 
-	 * @param   array $post_statuses
-	 * @return  array
+	 * Test wrapper around wp_remote_request
 	 */
-	public function mock_indexable_post_status( $post_statuses ) {
+	public function testEPRemoteRequest() {
+
+		global $ep_backup_host;
+
+		$ep_backup_host = false;
+
+		define( 'EP_FORCE_HOST_REFRESH', true );
+
+		//Test with EP_HOST constant
+		$request_1 = false;
+		$request   = ep_remote_request( '', array() );
+
+		if ( ! is_wp_error( $request ) ) {
+			if ( isset( $request['response']['code'] ) && 200 === $request['response']['code'] ) {
+				$request_1 = true;
+			}
+		}
+
+		//Test with only backups
+
+		define( 'EP_HOST_USE_ONLY_BACKUPS', true );
+
+		$request_2      = false;
+		$ep_backup_host = array( 'http://127.0.0.1:9200' );
+		$request        = ep_remote_request( '', array() );
+
+		if ( ! is_wp_error( $request ) ) {
+			if ( isset( $request['response']['code'] ) && 200 === $request['response']['code'] ) {
+				$request_2 = true;
+			}
+		}
+
+		$request_3      = false;
+		$ep_backup_host = array( 'bad host 1', 'bad host 2' );
+		$request        = ep_remote_request( '', array() );
+
+		if ( is_wp_error( $request ) ) {
+			$request_3 = $request;
+		}
+
+		$request_4      = false;
+		$ep_backup_host = array( 'http://127.0.0.1:9200', 'bad host 2' );
+		$request        = ep_remote_request( '', array() );
+
+		if ( ! is_wp_error( $request ) ) {
+			if ( isset( $request['response']['code'] ) && 200 === $request['response']['code'] ) {
+				$request_4 = true;
+			}
+		}
+
+		$request_5      = false;
+		$ep_backup_host = array( 'bad host 1', 'http://127.0.0.1:9200' );
+		$request        = ep_remote_request( '', array() );
+
+		if ( ! is_wp_error( $request ) ) {
+			if ( isset( $request['response']['code'] ) && 200 === $request['response']['code'] ) {
+				$request_5 = true;
+			}
+		}
+
+		$this->assertTrue( $request_1 );
+		$this->assertTrue( $request_2 );
+		$this->assertWPError( $request_3 );
+		$this->assertTrue( $request_4 );
+		$this->assertTrue( $request_5 );
+
+	}
+
+	public function mock_indexable_post_status($post_statuses){
 		$post_statuses = array();
 		$post_statuses[] = "draft";
 		return $post_statuses;
 	}
 
-	/**
-	 * Test invalid post date time
-	 * 
-	 * @param   array $post_statuses
-	 * @return  array
-	 */
 	public function testPostInvalidDateTime(){
 		add_filter( 'ep_indexable_post_status', array( $this, 'mock_indexable_post_status' ), 10, 1 );
 		$post_id = ep_create_and_sync_post( array( 'post_status' => 'draft' ) );
@@ -2018,7 +2019,7 @@ class EPTestSingleSite extends EP_Test_Base {
 	
 	/**
 	 * Test to verify that a post type that is set to exclude_from_search isn't indexable.
-	 * 
+	 * @group 321
 	 * @since 1.6
 	 * @link https://github.com/10up/ElasticPress/issues/321
 	 */
@@ -2030,7 +2031,7 @@ class EPTestSingleSite extends EP_Test_Base {
 	
 	/**
 	 * Test to make sure that brand new posts with 'auto-draft' post status do not fire delete or sync.
-	 * 
+	 * @group 343
 	 * @since 1.6
 	 * @link https://github.com/10up/ElasticPress/issues/343
 	 */
@@ -2051,7 +2052,6 @@ class EPTestSingleSite extends EP_Test_Base {
 
 	/**
 	 * Runs on http_api_debug action to check for a returned 404 status code.
-	 * 
 	 * @param array|WP_Error $response  HTTP response or WP_Error object.
 	 * @param string $type Context under which the hook is fired.
 	 * @param string $class HTTP transport used.
@@ -2108,12 +2108,6 @@ class EPTestSingleSite extends EP_Test_Base {
 
 	}
 
-	/**
-	 * Helper method for filtering private meta keys
-	 * 
-	 * @param  array $meta_keys
-	 * @return array
-	 */
 	public function filter_ep_prepare_meta_allowed_protected_keys( $meta_keys ) {
 
 		$meta_keys[] = '_test_private_meta_1';
@@ -2122,12 +2116,6 @@ class EPTestSingleSite extends EP_Test_Base {
 
 	}
 
-	/**
-	 * Helper method for filtering excluded meta keys
-	 * 
-	 * @param  array $meta_keys
-	 * @return array
-	 */
 	public function filter_ep_prepare_meta_excluded_public_keys( $meta_keys ) {
 
 		$meta_keys[] = 'test_meta_1';
@@ -2137,327 +2125,233 @@ class EPTestSingleSite extends EP_Test_Base {
 	}
 
 	/**
-	 * Test meta preparation
+	 * Test check host
 	 *
-	 * Tests meta perparation
+	 * Tests the check host function
 	 *
-	 * @since 1.7
+	 * @since 0.1.0
+	 *
+	 * @return void
 	 */
-	public function testMetaValueTypes() {
+	function testCheckHost() {
 
-		$api = new EP_API();
+		$check_host = EP_Lib::check_host();
 
-		$intval         = $api->prepare_meta_value_types( 13 );
-		$floatval       = $api->prepare_meta_value_types( 13.43 );
-		$textval        = $api->prepare_meta_value_types( 'some text' );
-		$bool_false_val = $api->prepare_meta_value_types( false );
-		$bool_true_val  = $api->prepare_meta_value_types( true );
-		$dateval        = $api->prepare_meta_value_types( '2015-01-01' );
-
-		$this->assertTrue( is_array( $intval ) && 5 === sizeof( $intval ) );
-		$this->assertTrue( is_array( $intval ) && array_key_exists( 'long', $intval ) && 13 === $intval['long'] );
-		$this->assertTrue( is_array( $floatval ) && 5 === sizeof( $floatval ) );
-		$this->assertTrue( is_array( $floatval ) && array_key_exists( 'double', $floatval ) && 13.43 === $floatval['double'] );
-		$this->assertTrue( is_array( $textval ) && 6 === sizeof( $textval ) );
-		$this->assertTrue( is_array( $textval ) && array_key_exists( 'raw', $textval ) && 'some text' === $textval['raw'] );
-		$this->assertTrue( is_array( $bool_false_val ) && 3 === sizeof( $bool_false_val ) );
-		$this->assertTrue( is_array( $bool_false_val ) && array_key_exists( 'boolean', $bool_false_val ) && false === $bool_false_val['boolean'] );
-		$this->assertTrue( is_array( $bool_true_val ) && 3 === sizeof( $bool_true_val ) );
-		$this->assertTrue( is_array( $bool_true_val ) && array_key_exists( 'boolean', $bool_true_val ) && true === $bool_true_val['boolean'] );
-		$this->assertTrue( is_array( $dateval ) && 6 === sizeof( $dateval ) );
-		$this->assertTrue( is_array( $dateval ) && array_key_exists( 'datetime', $dateval ) && '2015-01-01 00:00:00' === $dateval['datetime'] );
+		$this->assertTrue( $check_host );
 
 	}
 
 	/**
-	 * Test numeric integer meta queries
+	 * Test index status
 	 *
-	 * @since 1.7
+	 * Tests index status when site is and is not indexed.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @group BBPE-251
+	 *
+	 * @return void
 	 */
-	public function testMetaValueTypeQueryNumeric() {
+	function testGetIndexStatus() {
 
-		ep_create_and_sync_post( array( 'post_content' => 'the post content findme' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => 100 ) );
-		ep_create_and_sync_post( array( 'post_content' => 'the post content findme' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => 101 ) );
+		$status_indexed = EP_Lib::ep_get_index_status();
 
-		ep_refresh_index();
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => 101,
-					'compare' => '>=',
-					'type' => 'numeric',
-				)
-			),
-		);
+		ep_delete_index();
 
-		$query = new WP_Query( $args );
+		$status_unindexed = EP_Lib::ep_get_index_status();
 
-		$this->assertEquals( 1, $query->post_count );
-		$this->assertEquals( 1, $query->found_posts );
+		$this->setUp();
 
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => 100,
-					'compare' => '=',
-					'type' => 'numeric',
-				)
-			),
-		);
-
-		$query = new WP_Query( $args );
-
-		$this->assertEquals( 1, $query->post_count );
-		$this->assertEquals( 1, $query->found_posts );
-
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => 103,
-					'compare' => '<=',
-					'type' => 'numeric',
-				)
-			),
-		);
-
-		$query = new WP_Query( $args );
-
-		$this->assertEquals( 2, $query->post_count );
-		$this->assertEquals( 2, $query->found_posts );
+		$this->assertTrue( $status_indexed['status'] );
+		$this->assertFalse( $status_unindexed['status'] );
 
 	}
 
 	/**
-	 * Test decimal meta queries
+	 * Cluster status
 	 *
-	 * @since 1.7
+	 * Test cluster status.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @group BBPE-251
+	 *
+	 * @return void
 	 */
-	public function testMetaValueTypeQueryDecimal() {
+	function testGetClusterStatus() {
 
-		ep_create_and_sync_post( array( 'post_content' => 'the post content findme' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => 15.5 ) );
-		ep_create_and_sync_post( array( 'post_content' => 'the post content findme' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => 16.5 ) );
+		$status_indexed = EP_Lib::ep_get_cluster_status();
 
-		ep_refresh_index();
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => 16.5,
-					'compare' => '<',
-					'type' => 'decimal',
-				)
-			),
-		);
+		ep_delete_index();
 
-		$query = new WP_Query( $args );
+		$status_unindexed = EP_Lib::ep_get_cluster_status();
 
-		$this->assertEquals( 1, $query->post_count );
-		$this->assertEquals( 1, $query->found_posts );
+		$this->setUp();
 
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => 16.5,
-					'compare' => '=',
-					'type' => 'decimal',
-				)
-			),
-		);
+		if ( is_array( $status_indexed ) ) {
 
-		$query = new WP_Query( $args );
+			$this->assertTrue( $status_indexed['status'] );
 
-		$this->assertEquals( 1, $query->post_count );
-		$this->assertEquals( 1, $query->found_posts );
+		} else {
+
+			$this->assertTrue( isset( $status_indexed->cluster_name ) );
+
+		}
+
+		if ( is_array( $status_unindexed ) ) {
+
+			$this->assertTrue( $status_unindexed['status'] );
+
+		} else {
+
+			$this->assertTrue( isset( $status_unindexed->cluster_name ) );
+
+		}
 	}
 
 	/**
-	 * Test character meta queries. Really just defaults to a normal string query
+	 * Search status
 	 *
-	 * @since 1.7
-	 */
-	public function testMetaValueTypeQueryChar() {
-
-		ep_create_and_sync_post( array( 'post_content' => 'the post content findme' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => 'abc' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'the post content findme' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => 'acc' ) );
-
-		ep_refresh_index();
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => 'abc',
-					'compare' => '=',
-					'type' => 'char',
-				)
-			),
-		);
-
-		$query = new WP_Query( $args );
-
-		$this->assertEquals( 1, $query->post_count );
-		$this->assertEquals( 1, $query->found_posts );
-	}
-
-	/**
-	 * Test date meta queries
+	 * Test search status.
 	 *
-	 * @since 1.7
+	 * @since 0.1.0
+	 *
+	 * @group BBPE-251
+	 *
+	 * @return void
 	 */
-	public function testMetaValueTypeQueryDate() {
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => '11/13/15' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'the post content findme' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => '11/15/15' ) );
+	function testGetSearchStatus() {
 
-		ep_refresh_index();
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => '2015-11-14',
-					'compare' => '>',
-					'type' => 'date',
-				)
-			),
-		);
+		$status_indexed = EP_Lib::ep_get_search_status();
 
-		$query = new WP_Query( $args );
+		ep_delete_index();
 
-		$this->assertEquals( 1, $query->post_count );
+		$status_unindexed = EP_Lib::ep_get_search_status();
 
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => '2015-11-15',
-					'compare' => '=',
-					'type' => 'date',
-				)
-			),
-		);
+		$this->setUp();
 
-		$query = new WP_Query( $args );
-
-		$this->assertEquals( 1, $query->post_count );
+		$this->assertInstanceOf( 'stdClass', $status_indexed );
+		$this->assertFalse( $status_unindexed );
 
 	}
 
 	/**
-	 * Test time meta queries
+	 * Test byte size
 	 *
-	 * @since 1.7
+	 * Tests the human readable byte conversion function.@deprecated
+	 *
+	 * @since 0.1.0
+	 *
+	 * @group BBPE-251
+	 *
+	 * @return void
 	 */
-	public function testMetaValueTypeQueryTime() {
-		ep_create_and_sync_post( array( 'post_content' => 'the post content findme' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => '5:00am' ) );
+	function testByteSize() {
 
-		ep_refresh_index();
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => '17:00:00',
-					'compare' => '<',
-					'type' => 'time',
-				)
-			),
-		);
+		$one_kb = EP_Lib::ep_byte_size( 1056, 0 );
 
-		$query = new WP_Query( $args );
+		$one_mb = EP_Lib::ep_byte_size( 1056000, 0 );
 
-		$this->assertEquals( 1, $query->post_count );
+		$this->assertEquals( '1 KB', $one_kb );
+		$this->assertEquals( '1 MB', $one_mb );
 
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => '05:00:00',
-					'compare' => '=',
-					'type' => 'time',
-				)
-			),
-		);
-
-		$query = new WP_Query( $args );
-
-		$this->assertEquals( 1, $query->post_count );
 	}
 
 	/**
-	 * Test date time meta queries
+	 * Test put mapping function
 	 *
-	 * @since 1.7
+	 * Tests the index put mapping function.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
 	 */
-	public function testMetaValueTypeQueryDatetime() {
-		ep_create_and_sync_post( array( 'post_content' => 'the post content findme' ) );
-		ep_create_and_sync_post( array( 'post_content' => 'post content findme' ), array( 'test_key' => '5:00am 1/2/12' ) );
+	function testPutMapping() {
 
-		ep_refresh_index();
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => '2013-03-02 06:00:15',
-					'compare' => '<',
-					'type' => 'datetime',
-				)
-			),
-		);
+		$mapping_indexed = EP_Lib::put_mapping();
 
-		$query = new WP_Query( $args );
+		ep_delete_index();
 
-		$this->assertEquals( 1, $query->post_count );
+		$mapping_unindexed = EP_Lib::put_mapping();
 
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => '2012-01-02 05:00:00',
-					'compare' => '=',
-					'type' => 'datetime',
-				)
-			),
-		);
+		$this->setUp();
 
-		$query = new WP_Query( $args );
+		$this->assertTrue( $mapping_indexed );
+		$this->assertTrue( $mapping_unindexed );
 
-		$this->assertEquals( 1, $query->post_count );
-
-		$args = array(
-			's' => 'findme',
-			'meta_query' => array(
-				array(
-					'key' => 'test_key',
-					'value' => '2011-01-02 07:30:00',
-					'compare' => '>',
-					'type' => 'datetime',
-				)
-			),
-		);
-
-		$query = new WP_Query( $args );
-
-		$this->assertEquals( 1, $query->post_count );
 	}
+
+	/**
+	 * Test indexing function
+	 *
+	 * Tests indexing.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return void
+	 */
+	function testIndex() {
+
+		if ( ! class_exists( 'Jovo_Index_Worker' ) ) {
+			require( $this->plugin_path . '/classes/class-ep-index-worker.php' );
+		}
+
+		$index_worker = new EP_Index_Worker();
+
+		$index_result = $index_worker->index();
+
+		$this->assertTrue( $index_result );
+
+	}
+
+	/**
+	 * Test sanitize host
+	 *
+	 * Tests the sanitization function for saving a host via the dashboard.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @return void
+	 */
+	function testSanitizeHost() {
+
+		if ( ! class_exists( 'EP_Settings' ) ) {
+			require( $this->plugin_path . '/classes/class-ep-settings.php' );
+		}
+
+		$settings = new EP_Settings();
+
+		$host = $settings->sanitize_ep_host( 'http://127.0.0.1:9200' );
+
+		$this->assertEquals( 'http://127.0.0.1:9200', $host );
+
+	}
+
+	/**
+	 * Test sanitize activation
+	 *
+	 * Tests the sanitization function for changing activation state via the dashboard.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @return void
+	 */
+	function testSanitizeActivate() {
+
+		if ( ! class_exists( 'EP_Settings' ) ) {
+			require( $this->plugin_path . '/classes/class-ep-settings.php' );
+		}
+
+		$settings = new EP_Settings();
+
+		$active   = $settings->sanitize_ep_activate( '1' );
+		$inactive = $settings->sanitize_ep_activate( '0' );
+		$no_field = $settings->sanitize_ep_activate( null );
+
+		$this->assertTrue( $active );
+		$this->assertFalse( $inactive );
+		$this->assertFalse( $no_field );
+
+	}
+
 }
