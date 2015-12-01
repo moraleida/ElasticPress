@@ -2268,11 +2268,11 @@ class EPTestSingleSite extends EP_Test_Base {
 	 */
 	function testPutMapping() {
 
-		$mapping_indexed = EP_Lib::put_mapping();
+		$mapping_indexed = ep_process_site_mappings();
 
 		ep_delete_index();
 
-		$mapping_unindexed = EP_Lib::put_mapping();
+		$mapping_unindexed = ep_process_site_mappings();
 
 		$this->setUp();
 
