@@ -2248,9 +2248,9 @@ class EPTestSingleSite extends EP_Test_Base {
 	 */
 	function testByteSize() {
 
-		$one_kb = EP_Lib::ep_byte_size( 1056, 0 );
+		$one_kb = EP_Settings::ep_byte_size( 1056, 0 );
 
-		$one_mb = EP_Lib::ep_byte_size( 1056000, 0 );
+		$one_mb = EP_Settings::ep_byte_size( 1056000, 0 );
 
 		$this->assertEquals( '1 KB', $one_kb );
 		$this->assertEquals( '1 MB', $one_mb );
