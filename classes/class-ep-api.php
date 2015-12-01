@@ -1799,7 +1799,7 @@ class EP_API {
 	 *
 	 * @return array Contains the status message or the returned statistics.
 	 */
-	public static function get_cluster_status() {
+	public function get_cluster_status() {
 
 		if ( is_wp_error( ep_get_host() ) ) {
 
@@ -1839,7 +1839,7 @@ class EP_API {
 	 *
 	 * @return array Contains the status message or the returned statistics.
 	 */
-	public static function get_index_status( $blog_id = null ) {
+	public function get_index_status( $blog_id = null ) {
 
 		if ( is_wp_error( ep_get_host( true ) ) ) {
 
@@ -1890,7 +1890,7 @@ class EP_API {
 	 *
 	 * @return array Contains the status message or the returned statistics.
 	 */
-	public static function get_search_status( $blog_id = null ) {
+	public function get_search_status( $blog_id = null ) {
 
 		if ( is_wp_error( ep_get_host() ) ) {
 
