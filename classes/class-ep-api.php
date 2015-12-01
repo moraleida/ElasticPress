@@ -1674,6 +1674,54 @@ class EP_API {
 
 	}
 
+	/**
+	 * Parse response from Elasticsearch
+	 *
+	 * Determines if there is an issue or if the response is valid.
+	 *
+	 * @since 1.7
+	 *
+	 * @param object $response JSON decoded response from ElasticSearch.
+	 *
+	 * @return array Contains the status message or the returned statistics.
+	 */
+	public function parse_api_response( $response ) {
+
+		if ( null === $response ) {
+
+			return array(
+					'status' => false,
+					'msg'    => esc_html__( 'Invalid response from ElasticPress server. Please contact your administrator.' ),
+			);
+
+		} elseif (
+				isset( $response->error ) &&
+				(
+						( is_string( $response->error ) && stristr( $response->error, 'IndexMissingException' ) ) ||
+						( isset( $response->error->reason ) && stristr( $response->error-> reason, 'no such index' ) )
+				)
+		) {
+
+			if ( is_multisite() ) {
+
+				$error = __( 'Site not indexed. <p>Please run: <code>wp elasticpress index --setup --network-wide</code> using WP-CLI. Or use the index button on the left of this screen.</p>', 'elasticpress' );
+
+			} else {
+
+				$error = __( 'Site not indexed. <p>Please run: <code>wp elasticpress index --setup</code> using WP-CLI. Or use the index button on the left of this screen.</p>', 'elasticpress' );
+
+			}
+
+			return array(
+					'status' => false,
+					'msg'    => $error,
+			);
+
+		}
+
+		return array( 'status' => true, 'data' => $response->_all->primaries->indexing );
+
+	}
 }
 
 EP_API::factory();
@@ -1764,4 +1812,8 @@ function ep_format_request_headers() {
 
 function ep_remote_request( $path, $args ) {
 	return EP_API::factory()->remote_request( $path, $args );
+}
+
+function ep_parse_api_response( $response ) {
+	return EP_API::factory()->parse_api_response( $response );
 }
