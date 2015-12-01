@@ -2135,7 +2135,7 @@ class EPTestSingleSite extends EP_Test_Base {
 	 */
 	function testCheckHost() {
 
-		$check_host = EP_Lib::check_host();
+		$check_host = ep_check_host();
 
 		$this->assertTrue( $check_host );
 
