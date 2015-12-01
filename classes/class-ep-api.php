@@ -1722,6 +1722,73 @@ class EP_API {
 		return array( 'status' => true, 'data' => $response->_all->primaries->indexing );
 
 	}
+
+	/**
+	 * Get ElasticSearch plugins
+	 *
+	 * Gets a list of available ElasticSearch plugins.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return array Array of plugins and their version or error message
+	 */
+	public function get_plugins() {
+
+		$plugins = get_transient( 'ep_installed_plugins' );
+
+		if ( is_array( $plugins ) ) {
+			return $plugins;
+		}
+
+		$plugins = array();
+
+		if ( is_wp_error( ep_get_host() ) ) {
+
+			return array(
+					'status' => false,
+					'msg'    => esc_html__( 'ElasticSearch Host is not available.', 'elasticpress' ),
+			);
+
+		}
+
+		$path = '/_nodes?plugin=true';
+
+		$request = ep_remote_request( $path, array( 'method' => 'GET' ) );
+
+		if ( ! is_wp_error( $request ) ) {
+
+			$response = json_decode( wp_remote_retrieve_body( $request ), true );
+
+			if ( isset( $response['nodes'] ) ) {
+
+				foreach ( $response['nodes'] as $node ) {
+
+					if ( isset( $node['plugins'] ) && is_array( $node['plugins'] ) ) {
+
+						foreach ( $node['plugins'] as $plugin ) {
+
+							$plugins[ $plugin['name'] ] = $plugin['version'];
+
+						}
+
+						break;
+
+					}
+				}
+			}
+
+			set_transient( 'ep_installed_plugins', $plugins, apply_filters( 'ep_installed_plugins_exp', 3600 ) );
+
+			return $plugins;
+
+		}
+
+		return array(
+				'status' => false,
+				'msg'    => $request->get_error_message(),
+		);
+
+	}
 }
 
 EP_API::factory();
@@ -1816,4 +1883,8 @@ function ep_remote_request( $path, $args ) {
 
 function ep_parse_api_response( $response ) {
 	return EP_API::factory()->parse_api_response( $response );
+}
+
+function ep_get_plugins() {
+	return EP_API::factory()->get_plugins();
 }
