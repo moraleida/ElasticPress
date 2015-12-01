@@ -2154,11 +2154,11 @@ class EPTestSingleSite extends EP_Test_Base {
 	 */
 	function testGetIndexStatus() {
 
-		$status_indexed = EP_Lib::ep_get_index_status();
+		$status_indexed = ep_get_index_status();
 
 		ep_delete_index();
 
-		$status_unindexed = EP_Lib::ep_get_index_status();
+		$status_unindexed = ep_get_index_status();
 
 		$this->setUp();
 
@@ -2180,11 +2180,11 @@ class EPTestSingleSite extends EP_Test_Base {
 	 */
 	function testGetClusterStatus() {
 
-		$status_indexed = EP_Lib::ep_get_cluster_status();
+		$status_indexed = ep_get_cluster_status();
 
 		ep_delete_index();
 
-		$status_unindexed = EP_Lib::ep_get_cluster_status();
+		$status_unindexed = ep_get_cluster_status();
 
 		$this->setUp();
 
@@ -2222,11 +2222,11 @@ class EPTestSingleSite extends EP_Test_Base {
 	 */
 	function testGetSearchStatus() {
 
-		$status_indexed = EP_Lib::ep_get_search_status();
+		$status_indexed = ep_get_search_status();
 
 		ep_delete_index();
 
-		$status_unindexed = EP_Lib::ep_get_search_status();
+		$status_unindexed = ep_get_search_status();
 
 		$this->setUp();
 
