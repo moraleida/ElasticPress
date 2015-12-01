@@ -1465,7 +1465,11 @@ class EP_API {
 	 * @since 1.0.0
 	 */
 	public function deactivate() {
+
+		ep_check_host();
+
 		return delete_site_option( 'ep_is_active' );
+
 	}
 
 	/**
@@ -1475,7 +1479,11 @@ class EP_API {
 	 * @since 1.0.0
 	 */
 	public function activate() {
+
+		ep_check_host();
+
 		return update_site_option( 'ep_is_active', true );
+
 	}
 
 	/**
