@@ -2043,7 +2043,7 @@ class EP_API {
 
 				set_site_transient( 'ep_sites_to_map_remaining', array( 'sites' => $sites, 'success' => $success ), 600 );
 
-				return array( 'ep_mapping_complete' => false );
+				return array( 'ep_mapping_complete' => sizeof( $sites ) );
 
 			} else {
 
