@@ -1990,6 +1990,7 @@ class EP_API {
 		ep_check_host();
 
 		if ( true === $network_wide && is_multisite() ) {
+		ep_delete_index();
 
 			$last_run = get_site_transient( 'ep_sites_to_map_remaining' );
 
@@ -2018,59 +2019,11 @@ class EP_API {
 				$result = ep_put_mapping();
 
 				if ( $result ) {
-
-					$success[ $site['blog_id'] ] = true;
-
-				} else {
-
-					$success[ $site['blog_id'] ] = false;
-
-				}
-
-				restore_current_blog();
-
-				unset( $sites[ $index ] );
-
-				$site_count++;
-
-				if ( $site_count >= $max_site_mappings ) {
-					break;
-				}
-
-			}
-
-			if ( ! empty( $sites ) ) {
-
-				set_site_transient( 'ep_sites_to_map_remaining', array( 'sites' => $sites, 'success' => $success ), 600 );
-
-				return array( 'ep_mapping_complete' => sizeof( $sites ) );
-
-			} else {
-
-				delete_site_transient( 'ep_sites_to_map_remaining' );
-
-			}
-
-			if ( array_search( false, $success ) ) {
-				return $success;
-			}
-
 			return true;
-
-		} else {
-
-			// Deletes index first.
-			ep_delete_index();
-
-			$result = ep_put_mapping();
-
-			if ( $result ) {
-				return true;
-			}
-
-			return false;
-
 		}
+
+		return false;
+
 	}
 }
 
@@ -2210,7 +2163,7 @@ function ep_get_cluster_status() {
 	return EP_API::factory()->get_cluster_status();
 }
 
-function ep_process_site_mappings( $network_wide = false ) {
+function ep_process_site_mappings() {
 
-	return EP_API::factory()->process_site_mappings( $network_wide );
+	return EP_API::factory()->process_site_mappings();
 }
