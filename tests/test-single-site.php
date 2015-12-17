@@ -2186,6 +2186,7 @@ class EPTestSingleSite extends EP_Test_Base {
 
 		$status_unindexed = ep_get_cluster_status();
 
+
 		$this->setUp();
 
 		if ( is_array( $status_indexed ) ) {
@@ -2230,7 +2231,7 @@ class EPTestSingleSite extends EP_Test_Base {
 
 		$this->setUp();
 
-		$this->assertInstanceOf( 'stdClass', $status_indexed );
+		$this->assertTrue( is_array( $status_indexed ) );
 		$this->assertFalse( $status_unindexed );
 
 	}
@@ -2292,7 +2293,7 @@ class EPTestSingleSite extends EP_Test_Base {
 	 */
 	function testIndex() {
 
-		if ( ! class_exists( 'Jovo_Index_Worker' ) ) {
+		if ( ! class_exists( 'EP_Index_Worker' ) ) {
 			require( $this->plugin_path . '/classes/class-ep-index-worker.php' );
 		}
 
@@ -2300,7 +2301,7 @@ class EPTestSingleSite extends EP_Test_Base {
 
 		$index_result = $index_worker->index();
 
-		$this->assertTrue( $index_result );
+		$this->assertTrue( is_array( $index_result ) );
 
 	}
 
