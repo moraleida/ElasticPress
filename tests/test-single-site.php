@@ -2142,101 +2142,6 @@ class EPTestSingleSite extends EP_Test_Base {
 	}
 
 	/**
-	 * Test index status
-	 *
-	 * Tests index status when site is and is not indexed.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @group BBPE-251
-	 *
-	 * @return void
-	 */
-	function testGetIndexStatus() {
-
-		$status_indexed = ep_get_index_status();
-
-		ep_delete_index();
-
-		$status_unindexed = ep_get_index_status();
-
-		$this->setUp();
-
-		$this->assertTrue( $status_indexed['status'] );
-		$this->assertFalse( $status_unindexed['status'] );
-
-	}
-
-	/**
-	 * Cluster status
-	 *
-	 * Test cluster status.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @group BBPE-251
-	 *
-	 * @return void
-	 */
-	function testGetClusterStatus() {
-
-		$status_indexed = ep_get_cluster_status();
-
-		ep_delete_index();
-
-		$status_unindexed = ep_get_cluster_status();
-
-
-		$this->setUp();
-
-		if ( is_array( $status_indexed ) ) {
-
-			$this->assertTrue( $status_indexed['status'] );
-
-		} else {
-
-			$this->assertTrue( isset( $status_indexed->cluster_name ) );
-
-		}
-
-		if ( is_array( $status_unindexed ) ) {
-
-			$this->assertTrue( $status_unindexed['status'] );
-
-		} else {
-
-			$this->assertTrue( isset( $status_unindexed->cluster_name ) );
-
-		}
-	}
-
-	/**
-	 * Search status
-	 *
-	 * Test search status.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @group BBPE-251
-	 *
-	 * @return void
-	 */
-	function testGetSearchStatus() {
-
-		$status_indexed = ep_get_search_status();
-
-		ep_delete_index();
-
-		$status_unindexed = ep_get_search_status();
-
-		$this->setUp();
-
-		$this->assertTrue( is_array( $status_indexed ) );
-		$this->assertFalse( $status_unindexed );
-
-	}
-
-	/**
 	 * Test byte size
 	 *
 	 * Tests the human readable byte conversion function.@deprecated
@@ -2255,30 +2160,6 @@ class EPTestSingleSite extends EP_Test_Base {
 
 		$this->assertEquals( '1 KB', $one_kb );
 		$this->assertEquals( '1 MB', $one_mb );
-
-	}
-
-	/**
-	 * Test put mapping function
-	 *
-	 * Tests the index put mapping function.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	function testPutMapping() {
-
-		$mapping_indexed = ep_process_site_mappings();
-
-		ep_delete_index();
-
-		$mapping_unindexed = ep_process_site_mappings();
-
-		$this->setUp();
-
-		$this->assertTrue( $mapping_indexed );
-		$this->assertTrue( $mapping_unindexed );
 
 	}
 
