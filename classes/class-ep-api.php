@@ -1981,44 +1981,18 @@ class EP_API {
 	 *
 	 * @since      1.7
 	 *
-	 * @param bool $network_wide whether to index network wide or not.
-	 *
 	 * @return bool true on success or false
 	 */
-	public function process_site_mappings( $network_wide = false ) {
+	public function process_site_mappings() {
 
 		ep_check_host();
 
-		if ( true === $network_wide && is_multisite() ) {
+		// Deletes index first.
 		ep_delete_index();
 
-			$last_run = get_site_transient( 'ep_sites_to_map_remaining' );
+		$result = ep_put_mapping();
 
-			if ( false === $last_run ) {
-
-				$sites   = ep_get_sites();
-				$success = array();
-
-			} else {
-				$sites   = $last_run['sites'];
-
-				$success = $last_run['success'];
-
-			}
-
-			$max_site_mappings = apply_filters( 'ep_max_site_mappings', 10 );
-			$site_count        = 0;
-
-			foreach ( $sites as $index => $site ) {
-
-				switch_to_blog( $site['blog_id'] );
-
-				// Deletes index first.
-				ep_delete_index();
-
-				$result = ep_put_mapping();
-
-				if ( $result ) {
+		if ( $result ) {
 			return true;
 		}
 
