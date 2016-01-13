@@ -195,7 +195,7 @@ class EP_WP_Query_Integration {
 	 * @return string
 	 */
 	public function filter_found_posts_query( $sql, $query ) {
-		if ( ! ep_elasticpress_enabled( $query ) || apply_filters( 'ep_skip_query_integration', false, $query )  ) {
+		if ( ! ep_elasticpress_enabled( $query ) || apply_filters( 'ep_skip_query_integration', false, $query ) || apply_filters( 'ep_enable_found_posts', false, $query )  ) {
 			return $sql;
 		}
 
