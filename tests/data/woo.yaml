@@ -1,0 +1,5 @@
+Trendwerk\Faker\Entity\Post:
+  post{1..40}:
+    post_title: '<catchPhrase()>'
+    post_content: '<randomHTML(3,4)>'
+    post_type: 'page'

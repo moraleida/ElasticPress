@@ -1,0 +1,7 @@
+Trendwerk\Faker\Entity\Post:
+  post{1..10}:
+    post_title: '<catchPhrase()>'
+    post_content: '<text(800)>'
+    post_type: 'post'
+    meta:
+      name: '<name()>'
